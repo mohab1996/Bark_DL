@@ -28,7 +28,7 @@ from torchvision.transforms import ToPILImage
 import os
 
 
-#in this model, we crated a CNN network using Pytorch framework, to test the ability of the model to classify the dog's sound in three or more clusters.
+#in this model, we crated a CNN network using Pytorch framework, to test the ability of the model to predict the typee of the dog sound
 #firstly, we are going to segment the audio files into (0.3 second) audio snnipets to train and test the model:
 
 #craete a new function to segment the audio files
@@ -136,9 +136,9 @@ def save_images(dataset, folder):
 
 
 # Save train, validation, and test datasets
-# save_images(train_dataset, train_path)
-# save_images(val_dataset, validation_path)
-# save_images(test_dataset, testing_path)
+save_images(train_dataset, train_path)
+save_images(val_dataset, validation_path)
+save_images(test_dataset, testing_path)
 
 #load the images as a 16 tensor images batches 
 #Load testing dataset into batches
