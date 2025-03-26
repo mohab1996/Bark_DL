@@ -1,11 +1,8 @@
 #import libraries 
-import librosa
-import librosa.display
 from scipy.signal import butter, lfilter
 import matplotlib.pyplot as plt 
 import pandas as pd 
 from csv import writer
-from prometheus_client import Summary
 from pydub import AudioSegment
 from tqdm import tqdm 
 from PIL import Image
@@ -44,7 +41,7 @@ def audio_segmenter(input_file,output_file, format):
         
     audio_length=len(pre_sound)
         
-    #loop through the sound 
+    #loop through the sound files:
     for i in range(0, audio_length,interval):
         #we start from second 0 
         start_time=i
@@ -119,7 +116,7 @@ train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset
 
 print(f"{train_size} images for training, {val_size} images for validation, {test_size}images for testing")
 
-#after splitting thee data set into three parts (training,testing and validation), we save each set in separate file:
+#after splitting three datasets into three parts (training,testing and validation), we save each set in separate file:
 def save_images(dataset, folder):
     os.makedirs(folder, exist_ok=True)  # Create directory if not exists
     to_pil = ToPILImage()  # Convert tensor to PIL image
@@ -160,7 +157,7 @@ test_batches = torch.utils.data.DataLoader(test_dataset,
                                            num_workers=4)
 
 #let's define some helpful parameters 
-CHANNEL_COUNT = 1 # 1 channel as an image is a gray_scale image  
+CHANNEL_COUNT = 1 # 1 channel as an image is a gray_scale image  or it can be 3
 ACCURACY_THRESHOLD = 0.90
 writer = SummaryWriter()
 
@@ -268,6 +265,10 @@ def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_bat
             train_loss /= len(train_batches)
             train_accuracy = total_train_correct / total_train_samples if total_train_samples > 0 else 0.0
 
+            #append the values of training loss and training accuracy
+            train_accuracies.append(train_accuracy)
+            train_losses.append(train_loss)
+
         writer.add_scalar("training loss", train_loss, epoch)
         writer.add_scalar("training accuracy", train_accuracy, epoch)
 
@@ -293,6 +294,10 @@ def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_bat
             val_loss /= len(val_batches)
             val_accuracy = total_val_correct / total_val_samples if total_val_samples > 0 else 0.0
             final_accuracy = val_accuracy
+            
+            #append the values of val loss and val accuracy
+            val_accuracies.append(val_accuracy)
+            val_losses.append(val_loss)
 
         writer.add_scalar("validation loss", val_loss, epoch)
         writer.add_scalar("validation accuracy", val_accuracy, epoch)
@@ -305,6 +310,26 @@ def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_bat
         if val_accuracy >= ACCURACY_THRESHOLD:
             print(f"Stopping early as validation accuracy reached {val_accuracy:.4f} at epoch {epoch+1}.")
             break
+
+    # Plot training and validation accuracy
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, len(train_accuracies)+1), train_accuracies, label='Training Accuracy')
+    plt.plot(range(1, len(val_accuracies)+1), val_accuracies, label='Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title('Training and Validation Accuracy')
+    plt.legend()
+    plt.show()
+
+    # plot losses
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Training Loss')
+    plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+    plt.show()
 
     return final_accuracy
 
