@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt 
 import os
 
-#Absoulte paths of the training, validation and testing dataset that we have already splitted 
+#Absoulte paths of the training, validation and testing dataset that we have already splitted, these paths are path of grayscale plotted spectrograms:
 new_training_path=""
 new_validation_path=""
 new_test_path=""
