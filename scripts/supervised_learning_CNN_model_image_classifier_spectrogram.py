@@ -227,52 +227,43 @@ def accuracy_fn(y_true, y_pred):
     acc = (correct / len(y_pred)) * 100
     return acc
 
-#define the training function 
-def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_batches):
+def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_batches, writer=None, device='cpu'):
     final_accuracy = 0
+    train_accuracies, train_losses = [], []
+    val_accuracies, val_losses = [], []
+
+    model.to(device)
 
     for epoch in range(epochs):
-        # Training mode
         model.train()
         total_train_correct = 0
         total_train_samples = 0
         train_loss = 0
 
-        with torch.enable_grad():
-            for batch_idx, (images, labels) in enumerate(train_batches):
-                predictions = model(images)
-                loss = loss_func(predictions, labels)
+        for batch_idx, (images, labels) in enumerate(tqdm(train_batches, desc=f"Training Epoch {epoch+1}/{epochs}")):
+            images, labels = images.to(device), labels.to(device)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            predictions = model(images)
+            loss = loss_func(predictions, labels)
 
-                # Compute batch accuracy
-                _, preds = torch.max(predictions, 1)
-                batch_correct = (preds == labels).sum().item()
-                batch_size = labels.size(0)
-                batch_accuracy = batch_correct / batch_size
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                total_train_correct += batch_correct
-                total_train_samples += batch_size
-                train_loss += loss.item()
+            _, preds = torch.max(predictions, 1)
+            total_train_correct += (preds == labels).sum().item()
+            total_train_samples += labels.size(0)
+            train_loss += loss.item()
 
-                # Print batch-level info
-                print(f"Epoch [{epoch+1}/{epochs}], Batch [{batch_idx+1}/{len(train_batches)}], "
-                      f"Loss: {loss.item():.4f}, Batch Accuracy: {batch_accuracy:.4f}")
+        train_loss /= len(train_batches)
+        train_accuracy = total_train_correct / total_train_samples
+        train_accuracies.append(train_accuracy)
+        train_losses.append(train_loss)
 
-            # Compute epoch training loss and accuracy
-            train_loss /= len(train_batches)
-            train_accuracy = total_train_correct / total_train_samples if total_train_samples > 0 else 0.0
+        if writer:
+            writer.add_scalar("training loss", train_loss, epoch)
+            writer.add_scalar("training accuracy", train_accuracy, epoch)
 
-            #append the values of training loss and training accuracy
-            train_accuracies.append(train_accuracy)
-            train_losses.append(train_loss)
-
-        writer.add_scalar("training loss", train_loss, epoch)
-        writer.add_scalar("training accuracy", train_accuracy, epoch)
-
-        # Validation mode
         model.eval()
         val_loss = 0
         total_val_correct = 0
@@ -280,58 +271,55 @@ def train_neural_net(epochs, model, loss_func, optimizer, train_batches, val_bat
 
         with torch.inference_mode():
             for images, labels in val_batches:
+                images, labels = images.to(device), labels.to(device)
+
                 predictions = model(images)
                 loss = loss_func(predictions, labels)
 
                 val_loss += loss.item()
-
-                # Compute batch accuracy
                 _, preds = torch.max(predictions, 1)
-                batch_correct = (preds == labels).sum().item()
-                total_val_correct += batch_correct
+                total_val_correct += (preds == labels).sum().item()
                 total_val_samples += labels.size(0)
 
-            val_loss /= len(val_batches)
-            val_accuracy = total_val_correct / total_val_samples if total_val_samples > 0 else 0.0
-            final_accuracy = val_accuracy
-            
-            #append the values of val loss and val accuracy
-            val_accuracies.append(val_accuracy)
-            val_losses.append(val_loss)
+        val_loss /= len(val_batches)
+        val_accuracy = total_val_correct / total_val_samples
+        final_accuracy = val_accuracy
+        val_accuracies.append(val_accuracy)
+        val_losses.append(val_loss)
 
-        writer.add_scalar("validation loss", val_loss, epoch)
-        writer.add_scalar("validation accuracy", val_accuracy, epoch)
+        if writer:
+            writer.add_scalar("validation loss", val_loss, epoch)
+            writer.add_scalar("validation accuracy", val_accuracy, epoch)
 
-        # Print epoch summary
-        print(f"Epoch [{epoch+1}/{epochs}] "
-              f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
-              f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+        print(f"Epoch [{epoch+1}/{epochs}] Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")
 
-        if val_accuracy >= ACCURACY_THRESHOLD:
+        if train_accuracy  > 0.9:
             print(f"Stopping early as validation accuracy reached {val_accuracy:.4f} at epoch {epoch+1}.")
             break
 
-    # Plot training and validation accuracy
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, len(train_accuracies)+1), train_accuracies, label='Training Accuracy')
-    plt.plot(range(1, len(val_accuracies)+1), val_accuracies, label='Validation Accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.title('Training and Validation Accuracy')
-    plt.legend()
+   # Plot training and validation accuracy
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(range(1, len(train_accuracies)+1), train_accuracies, label='Training Accuracy')
+    ax.plot(range(1, len(val_accuracies)+1), val_accuracies, label='Validation Accuracy')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Accuracy')
+    ax.set_title('Training and Validation Accuracy')
+    ax.legend()
+    ax.grid(True)
+    plt.show()
+    
+    # Loss plot
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(range(1, len(train_losses)+1), train_losses, label='Training Loss')
+    ax.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Loss')
+    ax.set_title('Training and Validation Loss')
+    ax.legend()
+    ax.grid(True)
     plt.show()
 
-    # plot losses
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, len(train_losses)+1), train_losses, label='Training Loss')
-    plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss')
-    plt.legend()
-    plt.show()
-
-    return final_accuracy
+    return final_accuracy,val_accuracies,val_losses,train_accuracies,train_losses
 
 # Define loss and optimizer
 criterion = nn.CrossEntropyLoss()
