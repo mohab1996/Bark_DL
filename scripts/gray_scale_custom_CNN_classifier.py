@@ -23,9 +23,9 @@ from torch.utils.data import Dataset,DataLoader
 from torch.utils.data import TensorDataset
 import os
 
-val_folder = "E:\\MO\\bioinformatcis\\First Semster\\python programming\\python training\\augmented_val"
-train_folder = "E:\\MO\\bioinformatcis\\First Semster\\python programming\\python training\\augmented_train"
-test_folder = "E:\\MO\\bioinformatcis\\First Semster\\python programming\\python training\\preaugmented dataset\\test"
+val_folder = ""
+train_folder = ""
+test_folder = ""
 
 
 def label_extractor(file_path):
@@ -39,6 +39,7 @@ def label_extractor(file_path):
     else:
         return "unknown"
 
+#extracting spectrogram values for training set
 audio_training_data = []
 train_labels = []
 
@@ -70,6 +71,7 @@ for filename in os.listdir(train_folder):
     train_labels.append(f_label)
 
 
+#extracting spectrogram values for the validation set
 audio_validation_data = []
 val_labels = []
 
@@ -101,6 +103,7 @@ for filename in os.listdir(val_folder):
     audio_validation_data.append(spectrogram)
     val_labels.append(f_label)
 
+#extracting spectrogram values for the test set
 audio_test_data = []
 test_labels = []
 
@@ -132,7 +135,7 @@ for filename in os.listdir(test_folder):
     audio_test_data.append(spectrogram)
     test_labels.append(f_label)
 
-#convert the labels into numbers
+#convert the labels from strings into numbers
 train_labels_num = []
 for i in train_labels:
     if i == "ba":
